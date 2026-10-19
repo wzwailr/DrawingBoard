@@ -1,0 +1,13 @@
+import { createServer } from 'vite';
+import { build } from 'esbuild';
+import { spawn } from 'node:child_process';
+import electron from 'electron';
+const server = await createServer({ mode: 'validation' });
+await server.listen();
+await build({ entryPoints: ['src/main/index.ts'], outfile: 'dist-electron/main.cjs', bundle: true, platform: 'node', format: 'cjs', external: ['electron'] });
+await build({ entryPoints: ['src/preload/index.ts'], outfile: 'dist-electron/preload.cjs', bundle: true, platform: 'node', format: 'cjs', external: ['electron'] });
+const env = { ...process.env, DRAWINGBOARD_DEV_SERVER_URL: 'http://127.0.0.1:4173' };
+delete env.ELECTRON_RUN_AS_NODE;
+const child = spawn(electron, ['dist-electron/main.cjs'], { env, stdio: 'inherit', windowsHide: true });
+child.on('exit', async () => { await server.close(); process.exit(); });
+process.on('SIGINT', () => child.kill());

@@ -1,0 +1,6 @@
+{
+  "file": "packages/excalidraw/fonts/ExcalidrawFontFace.ts",
+  "reason": "When the host supplies an asset root, use only that local root. Do not append CDN font sources to an offline desktop document.",
+  "before": "    // fallback url for bundled fonts\n    urls.push(new URL(assetUrl, ExcalidrawFontFace.ASSETS_FALLBACK_URL));",
+  "after": "    // DrawingBoard: an explicit host asset root owns offline font loading.\n    if (urls.length === 0) {\n      urls.push(new URL(assetUrl, ExcalidrawFontFace.ASSETS_FALLBACK_URL));\n    }"
+}

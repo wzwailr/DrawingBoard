@@ -1,0 +1,10 @@
+import { build as buildWeb } from 'vite';
+import { build as buildNode } from 'esbuild';
+import { cp, mkdir } from 'node:fs/promises';
+const mode = process.argv.includes('--validation') ? 'validation' : 'production';
+await buildWeb({ mode });
+await mkdir('dist-electron', { recursive: true });
+await buildNode({ entryPoints: ['src/main/index.ts'], outfile: 'dist-electron/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] });
+await buildNode({ entryPoints: ['src/preload/index.ts'], outfile: 'dist-electron/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] });
+await cp('src/print', 'dist/print', { recursive: true });
+console.log(`Built DrawingBoard (${mode})`);

@@ -9,4 +9,5 @@ playwright-report/
 .runtime/
 vendor/excalidraw/
 vendor/artifacts/
+public/engine-assets/
 *.log
