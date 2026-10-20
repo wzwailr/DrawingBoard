@@ -1,0 +1,169 @@
+{
+  "sourceCommit": "13beea0ccd86190e65d5124697dc948f6cbb87c6",
+  "sourceFiles": [
+    "src/js/core/util.js",
+    "src/js/core/recognize.js",
+    "src/js/core/tools.js"
+  ],
+  "executedOn": "2026-10-19",
+  "environment": "functions.exec V8 isolate; fetched original pure functions; only ES module import/export syntax removed",
+  "gate": "r && r.confidence > 0.6 && fitError(points, r.kind, r) < MAX_FIT_ERROR; MAX_FIT_ERROR=0.055",
+  "inputs": {
+    "ellipse": {
+      "pointCount": 129,
+      "center": [
+        300,
+        200
+      ],
+      "formula": "theta_i=i*2*PI/128; x_i=300+rx*cos(theta_i); y_i=200+ry*sin(theta_i); i=0..128",
+      "radiiByCase": {
+        "circle_200x200": [
+          100,
+          100
+        ],
+        "ellipse_300x200": [
+          150,
+          100
+        ],
+        "ellipse_400x200": [
+          200,
+          100
+        ],
+        "ellipse_600x200": [
+          300,
+          100
+        ],
+        "circle_12x12": [
+          6,
+          6
+        ]
+      }
+    },
+    "rectangle": {
+      "vertices": [
+        [
+          100,
+          100
+        ],
+        [
+          400,
+          100
+        ],
+        [
+          400,
+          260
+        ],
+        [
+          100,
+          260
+        ]
+      ],
+      "formula": "For each edge p->q emit p+(q-p)*i/32 for i=0..31; append first vertex",
+      "pointCount": 129
+    },
+    "line": {
+      "formula": "x_i=400-i*4; y_i=300-i*2; i=0..64",
+      "pointCount": 65
+    }
+  },
+  "results": [
+    {
+      "name": "circle_200x200",
+      "points": 129,
+      "guess": {
+        "kind": "circle",
+        "x": 200.1261856962018,
+        "y": 100.06118317688014,
+        "w": 199.8738143037982,
+        "h": 199.8776336462397,
+        "confidence": 0.6
+      },
+      "error": 0.007670047946301413,
+      "accepted": false
+    },
+    {
+      "name": "ellipse_300x200",
+      "points": 129,
+      "guess": {
+        "kind": "hexagon",
+        "x": 150.33300691220745,
+        "y": 100.05150574565619,
+        "w": 299.66699308779255,
+        "h": 199.89698850868763,
+        "confidence": 0.7
+      },
+      "error": 0.029918088190996114,
+      "accepted": true
+    },
+    {
+      "name": "ellipse_400x200",
+      "points": 129,
+      "guess": {
+        "kind": "pentagon",
+        "x": 100.64603361733967,
+        "y": 100.04718179838997,
+        "w": 399.35396638266036,
+        "h": 199.90563640322003,
+        "confidence": 0.7
+      },
+      "error": 0.03930247300927539,
+      "accepted": true
+    },
+    {
+      "name": "ellipse_600x200",
+      "points": 129,
+      "guess": {
+        "kind": "triangle",
+        "x": 1.677977456903431,
+        "y": 100.04339230048654,
+        "w": 598.3220225430965,
+        "h": 199.91321539902688,
+        "confidence": 0.85
+      },
+      "error": 0.08047763317080393,
+      "accepted": false
+    },
+    {
+      "name": "rectangle_300x160",
+      "points": 129,
+      "guess": {
+        "kind": "rect",
+        "x": 100,
+        "y": 100,
+        "w": 300,
+        "h": 160,
+        "confidence": 0.88,
+        "square": false
+      },
+      "error": 0.002175271486716996,
+      "accepted": true
+    },
+    {
+      "name": "line_reverse",
+      "points": 65,
+      "guess": {
+        "kind": "line",
+        "x": 400,
+        "y": 300,
+        "w": -255.9999999999991,
+        "h": -127.99999999999955,
+        "confidence": 0.999999999999998
+      },
+      "error": 0.0027243589743589894,
+      "accepted": true
+    },
+    {
+      "name": "circle_12x12",
+      "points": 129,
+      "guess": null,
+      "error": null,
+      "accepted": false
+    }
+  ],
+  "limits": [
+    "Not a real mouse or Windows GUI test",
+    "No statistical accuracy claim",
+    "No same-input Excalidraw comparison was run",
+    "No GazBoard application code was modified"
+  ]
+}

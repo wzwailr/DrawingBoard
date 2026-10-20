@@ -1,12 +1,12 @@
 # DrawingBoard 技术设计与开发边界
 
-日期：2026-10-19。状态：**开发方案草案；待评审，尚未实现**。产品依据：[产品设计 v1.0](2026-10-19-drawingboard-product-design.md)；技术依据：[调研报告](../../research/2026-10-19/research-report.md)；执行清单：[开发计划](../plans/2026-10-19-drawingboard-development-plan.md)。本文不改写产品文档的 D01–D23。
+初版日期：2026-10-19；修订日期：2026-10-20。状态：**沿用现有技术路线，补充 GazBoard 借鉴边界；P0 已有实现，完成度以验证记录为准**。产品依据：[产品设计 v1.0](2026-10-19-drawingboard-product-design.md)；技术依据：[调研报告](../../research/2026-10-19/research-report.md)；执行清单：[开发计划](../plans/2026-10-19-drawingboard-development-plan.md)。本文不改写产品文档的 D01–D23。
 
 ## 1. 目标与当前事实
 
 交付一款 Windows 普通窗口应用：后台唤出、恢复上次画布，鼠标智能笔绘制，可编辑文字/图形/连接，组合静态页面，离线自动保存，展示、复制图片、PNG/PDF 和可编辑文件导出。
 
-当前目录只有设计与研究资料，没有应用源码、依赖锁文件、安装包或 Git 仓库。研究确认了现有模块和扩展风险，没有确认完整操作适配、识别准确率或启动性能。本轮只增加方案文档，不初始化工程或安装依赖。
+2026-10-20 文档修订时，当前目录已有 Git、源码与锁文件，HEAD 为 `9e1ef56`，T03 相关修改仍在工作区。实现与测试记录从 [P0 证据](../../validation/p0-evidence.md)进入；本次没有重跑测试，不把代码存在或历史测试记录写成完整 P0 通过。用户已确认继续现有方案，并将 GazBoard 的可借鉴模块与机制纳入实施参考；本轮只修订文档，不改应用代码或重新安排实施分支。
 
 工程原则：一个画布核心、一套对象关系、一套撤销历史；自研产品交互，复用成熟编辑能力。先验证输入控制权和桌面性能，再做完整功能；验证失败时不得偷偷修改产品规则以迁就底座。
 
@@ -37,6 +37,49 @@
 **外壳选择的理由和替代条件。** Electron 提供 [printToPDF](https://www.electronjs.org/docs/latest/api/web-contents#contentsprinttopdfoptions) 和 [globalShortcut](https://www.electronjs.org/docs/latest/api/global-shortcut)。Tauri 是备选，但其 Windows WebView2 的在线/离线分发有不同方案，不能仅比较不含运行时的安装包大小：[Tauri Windows installer](https://v2.tauri.app/distribute/windows-installer/)。若 P0 中后台占用或唤出表现不可接受，再用相同场景实测 Tauri，而不是同时维护两套宿主。
 
 许可采用调研的固定提交结论；所有真正引入的字体、图标、压缩库、上游依赖在 P0/P3 核查。tldraw 不作为无条件免费依赖；不直接移植 GPL/AGPL 实现到本方案中，除非另行明确整体分发许可。
+
+## 2.1 GazBoard 借鉴决策与复用边界（2026-10-20）
+
+继续使用 **Electron + Excalidraw 单一场景/绑定/历史 + 自有产品交互层**。本节是用户确认后的技术路线补充，不修改产品 D01–D23，也不将 A01–A09 自动升级为已确认决策。
+
+来源冻结为 GazBoard `v4.9.4` / `13beea0ccd86190e65d5124697dc948f6cbb87c6`，证据来自 2026-10-19 的[逐项评估](../../research/2026-10-19/gazboard-fit-gap-and-adaptation-assessment.md)与[识别探针](../../research/2026-10-19/gazboard-recognizer-probe.json)。这是固定版本参考，不声称 2026-10-20 已复核上游最新版本；采用其他提交时重查差异与许可。
+
+**三种使用方式：**
+
+- **局部源码移植候选**：仅限依赖清楚的小型纯函数；先检查本项目是否已有等价能力，映射现有类型，保留许可和来源，验证后才引入。“候选”不表示已复制或必须复制。
+- **机制/测试复用**：借用行为、异常路径和测试样例，在现有模块中实现；不导入 GazBoard 对象、运行时或场景仓库。
+- **产品自有适配**：由我们的输入、保存、展示等模块决定规则，继续使用 Excalidraw 编辑能力。不能为了复用而改变已确认的鼠标操作。
+
+| ID | 借鉴点与固定来源 | 可复用部分 | 必须适配的部分、排除项 | 责任任务 |
+| --- | --- | --- | --- | --- |
+| GZ01 | [recent.js][gz-recent]、[库搜索][gz-search] | 最近记录去重、按打开时间排序、重命名同步及缺失项提示；小型纯函数可局部移植 | 接到现有 BoardSummary/Repository/session；catalog 与 lastOpenedAt 保持唯一来源，最近列表是派生视图。缺失引用只显示不可用提示，不创建空画布或静默删除。条数 12/8、settings 结构和整个库 UI 不照搬 | T07、T08、T12 |
+| GZ02 | [connectors.js][gz-connectors] | 端点几何、目标删除回退和组合移动等测试案例；默认只参考机制 | 使用现有 connection-policy/Adapter 与 Excalidraw 绑定，不导入 GazBoard connector 模型、路由渲染或第二套历史。仍是先节点后线、两端绑定才默认箭头；首版不增加曲线/自动绕障 | T03、T05 |
+| GZ03 | [board-export.js][gz-board-export]、[export.js][gz-export] | 导出取当前内存一致快照、解析完整图片、缺图阻止成功、剔除机器私有路径；静态栅格到 PDF 的链路 | 接到既有 ExportRequest/RasterResult 和 .drawingboard 包，三类静态输出共用本项目栅格结果；扩展 provenance/区域等本项目语义。原路径保存失败时仍可导出到另选位置；不复制 GazBoard 文件身份、印记或任意文件读写桥 | T10、T11 |
+| GZ04 | [保存与资产链][gz-save] | 按画布串行保存、图片资产分离、缺失资产保留引用、恢复时拒绝迟到结果；复用设计和故障用例 | 继续采用 clientSeq/opId/revision、资产先写、旧文件保留。禁止复制“保存失败继续切换”“rename 失败直接覆盖原文件”“flush 失败仍确认退出”和仅按 boardId 清脏状态 | T07、T08 |
+| GZ05 | [窗口恢复][gz-window]、[恢复画布][gz-resume] | 窗口可见性检查与防异步恢复覆盖的机制；若现模块缺失，小型几何辅助可评估局部移植 | 接到现有 Electron 生命周期、全局热键和保存确认；恢复完整视角，不继承启动强制缩放到 1。高 DPI/拔屏/焦点必须真机验收；不以设置文件存在算恢复成功 | T03、T08、T13 |
+| GZ06 | [展示与临时指示][gz-present] | UI 隐藏与瞬时指示层思路；只借机制 | 本项目展示时必须禁止内容编辑，允许平移/缩放/指示。指示不进 scene/history/保存/导出；按 A08 验证退出视角/工具，不复用教学模式继续画图策略 | T12、T13 |
+| GZ07 | [浮动工具与弹出菜单][gz-toolbar] | 大画布、就近属性、按需入口的 GUI 组织方式 | 沿用已认可上方智能笔工具条、最近抽屉和中文反馈；不复制品牌素材，不引入计时、答案遮盖、文档转换、局域网分享等额外功能 | T08、T12 |
+| GZ08 | [识别入口][gz-ink]、[分类函数][gz-recognize]、[文字编辑][gz-text] | 七组定向探针的输入构造、错误分类/拒绝门槛反例、IME 的 Esc/Ctrl+Enter 边界，作为回归来源 | 不直接移植识别器、释放自动规整或双事务替换；保留自己的停顿预览与提交。合成轨迹不等于真实鼠标识别率，DOM key 事件不等于真机 IME | T02、T03、T04、T05 |
+
+**不重复造已有能力。** 图形创建/渲染、文字绑定、组合/对齐/分布、箭头关系、标准/轻手绘基础、撤销和序列化仍优先复用 Excalidraw；命名区域、样式作用范围等只补本项目差额。GazBoard 的命名组合/纵向纸张不能替代独立区域，铅笔笔刷不能替代可编辑图形风格。完整 `app.js`、`tools.js`、`store.js`、`surface.js` 以及教学/同步/更新系统均不纳入移植。
+
+**采用证据。** 各责任任务在既有阶段 evidence 中记录 GZ 编号、实际动作（机制参考/源码移植/现有能力已覆盖）、目标文件和验证结果；已有用例覆盖时引用用例，不重复实现。实际复制源码的同一次变更必须在 `docs/engineering/third-party-notices.md` 记录原仓库、固定提交、原文件、目标文件、修改点与许可，并保留所需版权声明；不要等 T14 才补。根 MIT 许可不替代字体、图标和依赖核查。没有引入源码或资源时明确记“机制参考，无源码复制”，不增加 GazBoard 运行依赖。
+
+实施动作与验收用例统一进入[开发计划](../plans/2026-10-19-drawingboard-development-plan.md)的 GZ01–GZ08 映射和原 T01–T14 任务，不另建一套 GazBoard 开发进度。当前 SDK 构造/识别接入使用固定源码内部包，仍有版本耦合；不能将“未改上游 App.tsx”写成“永远零补丁、零升级成本”。
+
+[gz-recent]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/core/recent.js
+[gz-search]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/ui/panels.js#L1581
+[gz-connectors]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/core/connectors.js
+[gz-board-export]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/board-export.js#L18
+[gz-export]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/export.js
+[gz-save]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/app.js#L484
+[gz-window]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/main.js#L698
+[gz-resume]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/app.js#L719
+[gz-present]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/app.js#L2148
+[gz-toolbar]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/ui/toolbar.js#L749
+[gz-ink]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/core/tools.js#L1817
+[gz-recognize]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/core/recognize.js#L49
+[gz-text]: https://github.com/fahim9778/GazBoard/blob/13beea0ccd86190e65d5124697dc948f6cbb87c6/src/js/ui/textedit.js#L342
 
 ## 3. 模块与进程边界
 

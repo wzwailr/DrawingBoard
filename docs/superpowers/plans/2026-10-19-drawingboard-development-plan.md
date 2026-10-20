@@ -1,6 +1,8 @@
 # DrawingBoard Development Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task after the user chooses the execution method. Steps use checkbox (`- [ ]`) syntax for tracking. 本文件当前是方案，不是执行记录；所有任务均未开始。
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task using the implementation branch's established execution method. Steps use checkbox (`- [ ]`) syntax for tracking. 本文件是任务与验收基线，不是当前完成度台账；继续已有实施安排，不因本次文档修订重新执行已完成任务。
+
+初版日期：2026-10-19；修订日期：2026-10-20。用户确认沿用现有方案，将 GazBoard 的模块与机制纳入实施参考；本次只更新文档。执行状态入口：[P0 证据](../../validation/p0-evidence.md)，其历史记录不能替代当前验收。
 
 **Goal:** 交付鼠标键盘优先、后台快开、智能笔绘制、可编辑关系与页面布局、本地离线保存、展示和三类导出的 Windows 应用。
 
@@ -25,7 +27,8 @@
 - 复制为图片、导出图片/PDF、导出可编辑文件都要有；独立展示模式支持临时讲解指示。
 - 设置支持标准线条、轻手绘；保留原始笔迹本身的样子；首版不加入生成式 AI。
 - 画布占据主体，使用浮动工具条与按需属性菜单；保留既有设计结构。
-- 当前只获授权设计方案。实施、依赖安装、Git 初始化和打包属于后续执行；本计划不声称它们已完成。
+- 当前已有独立实施工作；本次授权仅更新方案文档，不启动代码修改、依赖安装、提交/推送或打包。实施分支按原有授权继续，先核对现有实现和证据，再补本计划差额。
+- GazBoard 仅作固定版本的局部逻辑候选、机制与测试参考；不切换底座，不增加第二套场景/绑定/历史或 GazBoard 运行依赖。具体边界以技术设计第 2.1 节为准。
 
 ## Review Focus
 
@@ -50,7 +53,31 @@
 
 不先承诺日历工期或复用百分比。P0 给出实际改动面、性能和失败项后，再估算后续任务；不能用删除 PDF、独立文字或原迹恢复来伪装完成。
 
-## 2. 文件责任规划（以下源码路径均为拟创建）
+### 1.1 GazBoard 借鉴项落实表
+
+来源与复用类别由[技术设计第 2.1 节](../specs/2026-10-19-drawingboard-technical-design.md)统一定义；完整事实见[研究报告](../../research/2026-10-19/gazboard-fit-gap-and-adaptation-assessment.md)。沿用原 T 编号，不增加平行实施分支或独立 GazBoard 功能集。**已有实现先跑对应断言，只补缺失行为和证据；不为套用参考代码而重写通过的模块。**
+
+| GZ 编号 | 责任任务与落点 | 该任务必须交付的适配/证据 |
+| --- | --- | --- |
+| GZ01 最近记录 | T07/T08：board-repository.ts、boards/session.ts、ui/RecentBoards.tsx；T12：抽屉整合 | 最近打开去重排序、重命名联动、搜索与缺失项；使用现有 catalog/BoardSummary，不能再建竞争索引 |
+| GZ02 连线 | T03/T05：已有 editor/connection-policy.ts、adapter.ts；connections / connection-lifecycle 测试 | 保持 Excalidraw 原生绑定；验证删除/撤销、复制与组移动；不搬新 connector 模型 |
+| GZ03 导出 | T10/T11：storage/editable-package.ts、export/prepare-export.ts、export-service.ts | 当前内存一致快照、资产完整性、失败后另存恢复副本、去掉机器路径、PNG/PDF/剪贴板一致 |
+| GZ04 保存保护 | T07/T08：storage 三模块、boards/save-queue.ts、session.ts 与生命周期 IPC | 旧 ack 不清新脏状态、替换失败保留旧文件、缺图保留引用、失败不切换/隐藏/退出 |
+| GZ05 窗口与恢复 | T03/T08/T13：已有 main/index.ts 与后续 window/shortcuts/tray；session.ts | 旧异步恢复不覆盖新选择；完整恢复 zoom/相机；真实热键、拔屏和 DPI 证据 |
+| GZ06 展示 | T12/T13：presentation/controller.ts、指示视图与 presentation 测试 | 临时指示不写文档、历史或导出；展示中阻止编辑；验证退出状态 |
+| GZ07 轻量 GUI | T08/T12：RecentBoards、DocumentBar、ToolPalette、ContextBar | 借用组织方式，落实已认可草图；没有教学/分享等未实现入口和竞品品牌素材 |
+| GZ08 反例回归 | T02/T03/T04/T05：已有 recognizer/gesture/hit-policy/TextEditor、strokes fixtures | 用识别探针补形状和比例边界；保护 IME Esc/Ctrl+Enter；合成、自动化、真机证据分栏 |
+
+落地记录写在责任阶段的现有 evidence 中：`GZ 编号 → 现有覆盖/机制参考/源码移植 → 目标文件 → 用例与结果 → 未验证项`。每次实际源码移植同时更新 T14 负责维护的 third-party-notices；记录原提交/文件、目标、修改和许可，不能等打包时追补。当前八项均为**计划采用**，不是“八项已经实现”。
+
+### 1.2 本次补充的执行顺序
+
+1. P0 当前任务先核对 GZ08 的分类反例、文字输入边界以及 GZ02 的绑定门槛；已有 T02/T03 内容只补缺口。通过条件仍是完整 P0 门槛。
+2. P1 按 T04–T08 的原依赖推进：T05 落 GZ02 完整关系生命周期；T07/T08 将 GZ04/GZ05 的保存与恢复作为 GZ01 最近抽屉可靠可用的前提。T04/T06 原迹与区域沿用原计划，不因参考项重新排序任务依赖。
+3. P2 将 GZ03/GZ06/GZ07 接入导出、展示和工作区。文件/区域/风格继续遵守本项目契约，不改成 GazBoard 格式或教学语义。
+4. P3 复核 GZ 采用记录、许可与 V01–V17 的证据。对未采用的源码候选记录“现有实现已覆盖”或具体不适配原因，不为完成借鉴清单强行移植。
+
+## 2. 文件责任规划（既有文件继续修改，缺失文件按责任需要创建）
 
 | 路径 | 责任 |
 | --- | --- |
@@ -59,7 +86,7 @@
 | `src/main/storage/board-repository.ts`, `atomic-write.ts`, `asset-store.ts` | 串行保存、修订、资产、恢复与一致性 |
 | `src/main/storage/editable-package.ts`, `src/main/export-service.ts` | 便携文件导入导出、系统剪贴板/PNG/PDF |
 | `src/renderer/editor/EditorHost.tsx`, `adapter.ts`, `engine-snapshot.ts` | 画布集成、窄接口、引擎快照及版本适配 |
-| `src/renderer/input/hit-policy.ts`, `pointer-router.ts`, `text-controller.ts` | 命中、指针/双击路由、文字与 IME |
+| `src/renderer/input/hit-policy.ts`, `TextEditor.tsx`, `src/renderer/ink/SmartPenLayer.tsx` | 已有命中、文字/IME、指针/双击入口；按当前职责补齐，不仅为符合旧命名再建 pointer-router/text-controller |
 | `src/renderer/ink/gesture.ts`, `recognizer.ts`, `provenance.ts` | 停顿状态机、识别包装、原迹与恢复 |
 | `src/renderer/editor/connection-policy.ts`, `region-policy.ts`, `style-policy.ts` | 连接、区域与风格的产品规则 |
 | `src/renderer/boards/session.ts`, `save-queue.ts` | 当前画布、相机、切换请求代次、脏状态 |
@@ -70,11 +97,11 @@
 | `vendor/excalidraw/`, `vendor/README.md` | T01 固定上游源与构建记录；如有补丁逐项登记，不混入产品代码 |
 | `docs/engineering/`, `docs/validation/` | 版本/许可/ADR、阶段证据、性能、用户操作与已知限制 |
 
-不一次性创建所有空目录/占位类；每项任务只创建其产物需要的文件。当前不是 Git 仓库，T01 若执行则先建立本地版本历史并保留现有文档；不自动创建远端或推送。
+不一次性创建所有空目录/占位类；每项任务只创建其产物需要的文件。当前已有 Git、依赖和部分源码，不重复初始化或生成工程。T01 中已存在的文件与版本以工作区、dependency-baseline 和验证记录核对，缺口才执行；不自动创建远端或推送。现有 P0 将部分职责放在 main/index.ts、SmartPenLayer.tsx、TextEditor.tsx；只有实现证据表明需要拆分时才调整，禁止让两套输入/文字处理并行。
 
 ## 3. 接口契约
 
-T01 创建 `src/shared/contracts.ts`，以下是计划签名和数据约束，不是已存在 API。金额、网络账户等无关概念不得进入契约。
+`src/shared/contracts.ts` 已存在；下表仍是目标接口与数据约束，不声称全部 API 已实现。实施者先核对当前契约，已落地部分沿用，差异在对应任务/evidence 中明确后再补；不要直接覆盖共享类型以重建工程。金额、网络账户等无关概念不得进入契约。
 
 | 类型/接口 | 约定 |
 | --- | --- |
@@ -126,10 +153,12 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 ### T02：验证直接松手与停顿规整可控
 
-**Files:** src/renderer/ink/gesture.ts、recognizer.ts；src/renderer/editor/adapter.ts；tests/unit/gesture.test.ts、tests/integration/ink-adapter.test.ts；tests/fixtures/strokes/*.json；docs/validation/p0-evidence.md。
+**Files:** 已有 src/renderer/ink/gesture.ts、recognizer.ts、SmartPenLayer.tsx；src/renderer/editor/adapter.ts；tests/unit/gesture.test.ts、tests/integration/ink-adapter.test.ts、tests/desktop/smart-pen.spec.ts；拟新增 tests/integration/recognizer-cases.test.ts 与缺失的 tests/fixtures/strokes/*.json；docs/validation/p0-evidence.md。
 
 **Interfaces:** 消费 T01 Adapter；实现 createGesture 与 recognize；原始点、候选、strokeToken 分离。
 
+- [ ] **GZ08 实际分类回归**：从研究目录的 gazboard-recognizer-probe.json 按明确坐标公式建立独立合成 fixtures，在 tests/integration/recognizer-cases.test.ts 调用当前真实 recognize 包装，不用注入假识别器的手势测试替代。断言 `circle_maps_to_ellipse`、`elongated_ellipse_preserves_aspect`（300×200、400×200、600×200）、`reverse_line_preserves_direction`、`unsupported_candidate_never_becomes_polygon`；保留矩形基准。小圆用于记录尺度拒绝边界，不照搬 GazBoard 的世界坐标阈值或把正确拒绝噪声当作失败。
+- [ ] 先运行 `pnpm test -- tests/integration/recognizer-cases.test.ts` 记录当前结果；仅补分类差额，随后连同本任务手势/适配测试复验。可靠圆/椭圆仍拒绝或比例改变时记录具体缺口，不只凭“没有错误多边形”判通过。真实鼠标轨迹另存，合成探针不写成总体识别率。
 - [ ] 写失败断言：`release_before_hold_keeps_ink`、`hold_without_new_move_previews`、`continued_motion_resets_timer`、`four_strokes_never_merge`、`stale_timer_cannot_commit_next_stroke`、`unknown_keeps_ink`、`preview_does_not_mutate_document`。fake clock 分别推进 holdMs-1 与 holdMs，确认无提前提交；保存原点数量与顺序。
 - [ ] 实现单笔状态机和分类器包装；通过 Adapter 预览/一次提交。用公开扩展先做，失败时记录确切阻碍再尝试最小源码补丁，不并存两个事件处理器。
 - [ ] 执行 `pnpm test -- tests/unit/gesture.test.ts tests/integration/ink-adapter.test.ts`；用鼠标完成释放、停顿、慢画、近闭合、随意涂鸦，并记录视频/事件轨迹，评估候选参数而非直接固化它们。
@@ -137,13 +166,14 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 ### T03：验证命中、文字、连线及桌面门槛
 
-**Files:** src/renderer/input/hit-policy.ts、pointer-router.ts、text-controller.ts；src/renderer/editor/connection-policy.ts；src/main/window.ts、shortcuts.ts；tests/integration/input-routing.test.ts、connections.test.ts；tests/e2e/core-interaction.spec.ts；docs/engineering/adr-001-editor-and-shell.md；docs/validation/p0-evidence.md。
+**Files:** 已有 src/renderer/input/hit-policy.ts、TextEditor.tsx、src/renderer/ink/SmartPenLayer.tsx；src/renderer/editor/connection-policy.ts；src/main/index.ts；tests/integration/input-routing.test.ts、connections.test.ts；tests/desktop/core-interaction.spec.ts、lifecycle-export.spec.ts；拟新增 docs/engineering/adr-001-editor-and-shell.md；docs/validation/p0-evidence.md。后续 window/shortcuts 拆分归 T08，本任务不另建重复入口。
 
 **Interfaces:** 实现 hitTest/beginText、指针分流和连接条件；不允许 pointer 回调与引擎内置处理重复提交同一笔。
 
+- [ ] **GZ02/GZ08 P0 差额**：先检查已有 connections/input-routing/desktop 用例。补断言 `filled_shape_inside_still_draws`、`ime_composing_escape_keeps_session`、`ime_composing_ctrl_enter_does_not_submit`；确保智能笔规整直线使用已有 attachLine/Adapter 路径且一次提交，不新增 GazBoard connector。实际 Windows 候选字操作与 DOM 自动化分别记证据。
 - [ ] 写失败断言：`inside_draws_border_moves`、`border_doubleclick_binds_text`、`inside_doubleclick_creates_independent_text_without_dots`、`raw_line_has_no_bindings`、`both_bound_adds_directional_arrow`、`empty_endpoint_creates_no_node`、`single_undo_removes_committed_shape`；对缩放 0.5/1/2/4 的屏幕命中结果一致性作断言。
 - [ ] 接入真实 textarea 与组合输入保护；最小热键显示/隐藏、PNG 到测试打印页的 PDF 冒烟；新增 provenance 示例往返断言，证明后续来源字段不会被底座清洗掉。PDF 冒烟产物使用合成内容及临时测试目录。
-- [ ] 执行 `pnpm test -- tests/integration/input-routing.test.ts tests/integration/connections.test.ts`、`pnpm test:e2e -- tests/e2e/core-interaction.spec.ts`；真实 Windows 中文输入法和其他应用焦点下热键实测，不能用 fill() 代替 IME 证据。
+- [ ] 执行 `pnpm test -- tests/integration/input-routing.test.ts tests/integration/connections.test.ts`、`pnpm test:desktop -- tests/desktop/core-interaction.spec.ts tests/desktop/lifecycle-export.spec.ts`；真实 Windows 中文输入法和其他应用焦点下热键实测，不能用 fill() 代替 IME 证据。
 - [ ] 按技术设计第 9 节测暖唤出、进程重启、帧时、内存和 idle CPU；记录已测试设备与不可测项。在 adr-001 给出 PASS / FAIL / 未验证，公开 API / 受控补丁的选择及理由。只有全数硬门槛通过才能进入 P1；否则修复或重新选型，不能将未验证写成通过。
 - [ ] 提交 `test: decide editor and desktop feasibility from evidence`，给用户展示可操作结果并收敛 A01/A02/A07；P0 没有获得操作体验反馈时记录该事实，不自称用户认可。
 
@@ -153,16 +183,18 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 实现 restoreInk；provenance 写入对象 customData，与核心历史/复制/序列化同生命周期。
 
+- [ ] **GZ08 历史边界**：沿用已有原迹来源和一次提交；验证规整前预览不写场景、恢复与撤销不丢来源。不得引入 GazBoard“先加 ink、再删 ink 加 shape”的双事务来旁路本项目的独立恢复动作。
 - [ ] 写失败断言：平移/非等比缩放/旋转后恢复原迹位置正确；候选移动取消后仍是一笔；capture lost/失焦不丢已采集点；恢复前后一次 undo/redo 可完整往返；恢复不覆盖原始笔迹样式。
 - [ ] 实现原迹变换与恢复事务，带绑定时按 A04 提示并保留文字/线位置；已被用户修订的 A04 以最新产品决策为准，同时更新本任务断言。
 - [ ] 执行 `pnpm test -- tests/unit/provenance.test.ts tests/integration/restore-ink.test.ts`；人工验证连续绘制不会切回选择工具、恢复提示可以取消，提交 `feat: preserve and restore original ink`。
 
 ### T05：文字和连接的完整编辑生命周期
 
-**Files:** src/renderer/input/text-controller.ts；src/renderer/editor/connection-policy.ts、adapter.ts；tests/integration/text-binding.test.ts、connection-lifecycle.test.ts；tests/desktop/ime-checklist.md。
+**Files:** 已有 src/renderer/input/TextEditor.tsx、src/renderer/ink/SmartPenLayer.tsx；src/renderer/editor/connection-policy.ts、adapter.ts；拟新增 tests/integration/text-binding.test.ts、connection-lifecycle.test.ts；tests/desktop/ime-checklist.md。
 
 **Interfaces:** 消费 T04 事务与来源；标签、线仍使用原生绑定，不添加第二套关系表。
 
+- [ ] **GZ02/GZ08 完整生命周期**：在 connection-lifecycle.test.ts 补 `deleted_target_keeps_free_endpoint_and_undo_restores_binding`、`copy_nodes_and_line_remaps_binding_ids`、`group_move_does_not_double_translate_line`；复用 Excalidraw 原生关系完成这些断言，不维护第二张 connector 表。在 ime-checklist.md 延续 T03 的 Esc/Ctrl+Enter 候选场景，增加图形标签、失焦和收起请求；已覆盖的测试直接引用。
 - [ ] 写失败断言：输入 Enter 换行；composition 期间 Esc/单字母不提交绘图动作；取消箭头仍保持端点绑定；单端绑定不带默认箭头；重接/解绑保留可预期端点；节点与线一起移动不双重位移；删除/撤销恢复关系。
 - [ ] 实现文字焦点、移动/缩放标签跟随、连接属性与重接；图形有标签和连线时恢复原迹不删除任何内容，undo 返回原关系。
 - [ ] 执行 `pnpm test -- tests/integration/text-binding.test.ts tests/integration/connection-lifecycle.test.ts`；按 ime-checklist 在真实输入法候选、中文换行、切换应用后验证，记录结果；提交 `feat: complete text and connector editing`。
@@ -173,6 +205,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 区域沿用 frameId；提供 createRegionFromSelection、add/removeMembers、moveRegion、resizeRegionBoundary 产品动作，输入均为明确对象 ID/世界坐标。
 
+- [ ] 对照 GazBoard 命名组合的限制，确认本任务仍使用独立区域身份/边界；命名组合、普通大矩形与区域不可互换。对齐/分布/组合优先复用 Excalidraw，不因参考 GazBoard 再实现一套；成员规则仍按待收敛的 A06 验证。
 - [ ] 写失败断言：大矩形内画内容不自动归组；组合/解组不换 ID；对齐/等距可撤销；区域移动带成员一次；改边界不缩放成员；视觉包围不自动纳入；跨区域连线不重复移动。
 - [ ] 复用核心选择/对齐/组合，接入区域标题和显式成员动作；按 A06 不做嵌套或自动 reparent。产品 UI 禁止让原生默认行为悄悄旁路本策略。
 - [ ] 执行 `pnpm test -- tests/integration/layout-region.test.ts`、`pnpm test:e2e -- tests/e2e/page-layout.spec.ts`；完成“导航+卡片+按钮+文字”的低保真页面实例，提交 `feat: support static layouts and named regions`。
@@ -183,6 +216,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 实现 BoardRepository 与 SaveQueue；SaveRequest/Ack 按第 3 节；用户数据根由主进程解析，测试必须注入独立临时根。
 
+- [ ] **GZ04 故障回归**：扩展已有保存/恢复用例，明确检查 `rename_failure_preserves_previous_bytes`、`old_save_ack_cannot_clear_new_edit`、`missing_asset_keeps_reference_without_blank_overwrite`、`catalog_failure_does_not_undo_saved_head`；注入失败后读取旧文件字节和当前内存状态。没有匹配修订确认不能显示“已保存”，不得把 rename 失败回退为直接 writeFile 原件。
 - [ ] 写失败断言：在途保存后继续编辑不会被旧 ack 标成已保存；baseRevision 冲突不覆盖；资产写失败保留旧 head；head 替换失败保留旧文件；commit 后回执丢失用 opId 识别；坏 head 只恢复有效 backup；未知版本不变空白；catalog 可从 head 重建。
 - [ ] 实现按画布串行化、资产先写、验证/备份/替换、回执与可重试错误；快照只保存完成的对象。保留损坏文件，不自动清理可能被 head/backup 引用的资产。
 - [ ] 执行 `pnpm test -- tests/integration/board-repository.test.ts tests/integration/save-queue.test.ts tests/integration/recovery.test.ts`；故障注入覆盖每个写入边界及 Windows 文件占用，观察“已保存”与实际文件一致；提交 `feat: persist boards with recoverable saves`。
@@ -193,6 +227,8 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 消费 Repository/SaveQueue；每次打开有独立请求代次，DesktopApi 的 requestHide 先完成文字/笔画结算和 flush。
 
+- [ ] **GZ01 最近与搜索**：在 board-session.test.ts 覆盖 `recent_open_deduplicates_and_orders_by_last_opened`、`rename_updates_recent_and_search`、`missing_recent_ref_is_visible_and_never_opens_as_empty`。接既有 catalog/BoardSummary；若局部移植 recent.js 纯逻辑，去掉上游固定条数、settings 耦合并同时登记来源许可，不新增竞争最近索引。
+- [ ] **GZ04/GZ05 生命周期**：补 `startup_restore_cannot_replace_explicitly_opened_board`、`resume_keeps_nondefault_zoom`、`failed_flush_cancels_switch_hide_and_quit`、`stale_lifecycle_ack_is_ignored`；旧 requestId 或失败回执不可确认退出，不复制固定等待 2 秒后无条件退出的策略。与 lifecycle 真机步骤一起检查窗口找回、焦点、热键释放；自动化未覆盖的 DPI/拔屏不得写通过。
 - [ ] 写失败断言：新建保留旧画布；慢的旧 load 不覆盖新选择；按最近使用排序/搜索/重命名一致；切换/收起保存失败留在当前画布；恢复内容+相机；新热键注册失败保留原键及原设置，有可见错误和托盘入口；多次启动只有一个主窗口。
 - [ ] 实现最近抽屉、X 收起/托盘退出候选、配置热键、真实保存状态；旧屏幕不存在时恢复可见窗口。完全退出释放监听与热键，用户数据不随退出清理。
 - [ ] 执行 `pnpm test -- tests/integration/board-session.test.ts`、`pnpm test:desktop -- tests/desktop/lifecycle.spec.ts`；在其他应用聚焦时操作唤出/收起、正常退出重开、热键占用与修改设置；提交 `feat: resume boards through desktop lifecycle`。
@@ -213,6 +249,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** `encodeEditable(document:BoardDocument,assets:AssetInput[]):Promise<Uint8Array>`；`decodeEditable(bytes:Uint8Array):Promise<AppResult<{document:BoardDocument,assets:AssetInput[]}>>`；导入通过 Repository 创建新内部 UUID。
 
+- [ ] **GZ03 快照与资产**：在 editable-package.test.ts 补 `export_freezes_memory_before_async_asset_resolution`、`missing_asset_blocks_export_without_erasing_reference`、`portable_file_has_no_machine_origin_path`；原路径保存失败但内存与资产完整时，另选目标导出的文件必须包含未保存修改。先前 T07/T09 已有资产校验直接复用，不另接 GazBoard 资源仓库或 .gazboard 文件身份。
 - [ ] 写失败断言：导出再导入保留所有图形、标签/线、区域、图片、provenance；自动保存失败后导出仍包含当前内存修改；原画布不覆盖；拒绝路径穿越/重复条目/伪哈希/解压超限/缺失图片/高版本；取消对话框不出现失败通知。
 - [ ] 选择并锁定许可兼容的 ZIP 库，实现受限解包和临时目录清理；完整验证后才创建画布记录，失败不污染最近列表。
 - [ ] 执行 `pnpm test -- tests/integration/editable-package.test.ts`；把合成文件复制到独立测试数据目录离线打开并继续编辑，提交 `feat: round trip editable board files`。
@@ -223,6 +260,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** EditorAdapter.exportRaster 消费 ExportRequest；主进程接收 RasterResult 并控制保存对话框或 clipboard.writeImage；打印模板不接受任意 HTML/URL。
 
+- [ ] **GZ03 共用静态结果**：在 export.test.ts 核对同 scope/倍率/背景下剪贴板与 PNG 共用 RasterResult，PDF 嵌入同一图像而非再次读取可变场景；补 `async_font_or_image_load_keeps_start_snapshot`、`missing_resource_never_reports_success`。对话框取消、写入失败、另存重试要分别断言，沿用现有 8192px/32MP 方案限制，不照搬上游静默缩小或裁切。
 - [ ] 写失败断言：选区/区域/全部的边界正确；空画布无假输出；超限要求修改参数；导出取开始时快照，不混入后续编辑/预览/指示点；取消无残缺目标文件；中文和图片资源完整。
 - [ ] 实现共同范围预览、PNG、系统图片剪贴板和单页栅格 PDF；按原型参数说明实际尺寸和纸张。只在所有字形/图片准备完成后输出。
 - [ ] 执行 `pnpm test -- tests/integration/export.test.ts`、`pnpm test:desktop -- tests/desktop/export.spec.ts`；将剪贴板粘贴到独立图像应用、实际打开 PNG/PDF 检查字体和裁切，不能只验证文件非空；提交 `feat: deliver image and pdf exports`。
@@ -233,6 +271,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 展示仅修改会话 UI/相机，保存编辑前 viewport/tool；指示层不写场景；工作区只调用已有产品动作。
 
+- [ ] **GZ06/GZ07 展示和 GUI**：复用“临时指示 + 按需 UI”机制；补 `present_pointer_never_changes_scene_or_history`、`present_paste_delete_and_drag_do_not_edit`、`hidden_window_stops_pointer_animation`。取展示前后 scene/history 快照并检查导出图无指示；工具条仍在上方，最近入口仍为抽屉，不复制教学功能和品牌资源。
 - [ ] 写失败断言：展示中鼠标与 Delete 不改文档；退出恢复视角/工具；指示不在导出中；弹窗/IME/展示的 Esc 优先级正确；工具条和最近抽屉在窄窗口仍可操作。
 - [ ] 按认可草图组织主窗口与所有按需面板，提供键盘焦点/控件名称；只显示已实现功能。落地展示当前视角和指定区域入口。
 - [ ] 执行 `pnpm test:e2e -- tests/e2e/presentation.spec.ts tests/e2e/workspace.spec.ts`；在 1280×720、1440×900、900×650 窗口及 100%/150%/200% 缩放截图，记录逻辑/物理尺寸；与同状态参考比较布局、密度、中文、反馈；提交 `feat: complete presentation and focused workspace`。
@@ -243,6 +282,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 不新增产品服务；使用冻结版本和阶段实现，错误修复回到责任模块并保留回归。
 
+- [ ] 复核 GZ01–GZ08 的采用记录和对应 V 场景：合成分类、组件/Electron 自动化、真实 Windows 操作分别给出结果。缺少实测不得用 GazBoard 上游 CI 或本项目历史 PASS 填补；已稳定通过且未变的路径引用原证据，受影响路径按本轮修改复验。
 - [ ] 为 V01–V17 建立执行记录：代码测试、实际运行、图片/文件、环境、结果、未覆盖项分栏；独立验证真实混合 DPI/拔屏，只有模拟条件时标未验证。
 - [ ] 执行 `pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm test:e2e`、`pnpm test:desktop`；跑完整唤出到收起流程，加入正常退出重开、保存失败和可编辑文件往返。
 - [ ] 对 S/1000/10,000 对象场景测量冷/暖启动、帧时、保存/导出阻塞、总内存/后台 CPU；按技术设计说明测量边界。阻塞性失败修复后只复测受影响路径与完整核心流程；未验证项不写 PASS。
@@ -254,6 +294,7 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 **Interfaces:** 从 T13 通过的同一提交与锁文件构建，不从混有无关修改的工作区随意出包；签名身份仅由实际环境提供。
 
+- [ ] 汇总实际采用的 GZ 项与 third-party-notices：机制参考标“无源码复制”；源码移植核对固定 SHA/原路径/目标路径/改动和版权声明；逐项核对随附字体/图标/依赖。确认没有 GazBoard 整应用运行依赖、品牌印记或未纳入范围的教学/同步功能。此处是复核，源码采用时就应已登记。
 - [ ] 核对源码/依赖/字体/图标许可与上游补丁，生产资源全部本地；执行 `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm package:win`，记录源提交、锁文件摘要、产物 SHA-256 和工具版本。
 - [ ] 在 Windows 11 x64 普通用户环境安装，断网完成主要流程；确认重启恢复、热键释放、窗口位置、文件输出和无开发工具依赖。未取得干净目标环境则清楚标记限制，不把开发机运行当安装验收。
 - [ ] 交付安装包、操作说明、已知限制和验收证据。未签名包标为内部测试版；不自动发布外网、上传商店或购买证书。提交 `docs: document verified windows delivery`。
@@ -274,8 +315,15 @@ DesktopApi 中 board 方法与 Repository 同签名；`assets.chooseImages():Pro
 
 ## 6. 当前状态与执行交接
 
-本轮完成的是技术设计、14 项任务、接口和验证门槛；任务复选框均未执行。自检关注产品 23 项决策和 17 个验收场景的覆盖、接口一致性、原型建议标识、真实系统验证与自动化的区别。
+**2026-10-20 修订：用户确认继续现有方案，本轮只完成 GazBoard 借鉴项的文档落位。** 本计划保留 14 个 T 任务和原有 P0–P3 门槛，新增 GZ01–GZ08 的采用边界与验收案例。复选框表示计划要求，不能凭空白框推断实施分支没有做，也没有因补充参考就把任何任务勾为完成。
 
-建议下一步只进入 **P0（T01–T03）**，以实际结果决定核心适配方式。执行方法可选择：主代理按任务顺序实施，或每任务由独立子代理实现/复核。当前推荐主代理顺序实施 P0，因为三个任务共同决定接口、事件路径和补丁边界，过早拆散容易各做一套假定；P0 决策后再评估并行。
+实施分支先读技术设计第 2.1 节、本计划第 1.1/1.2 节，再进入正在实施的 T 任务。2026-10-20 本次核对的 HEAD 为 `9e1ef56`（T02 智能笔提交），已有 T01/T02 提交与 T03 工作区修改；当前完成情况以 [P0 证据](../../validation/p0-evidence.md)、实时代码和新鲜验收结果核对。本次未重跑测试，不将旧记录的“T02 进行中”或提交名称直接换算为完整 PASS。
 
-依赖、性能和许可验证均有指定任务与产物；不将计划中的文件、函数、测试命令或包当作当前存在并可运行的成果。
+交接顺序：
+
+1. 保留实施分支已有代码、未提交修改和执行方式，先比对已有用例；T01 不重建工程，T02/T03 只补本次 GZ 发现的相关缺口。
+2. 在各阶段 evidence 记录 GZ 采用方式、目标文件、测试和未验证项；源码移植同时登记 third-party-notices。
+3. P0 尚未满足的硬门槛继续完成；只有 P0 全部通过后才进入 P1。借鉴项不能成为提前跳过核心验收的理由，也不能为复制参考实现而推翻已通过的契约。
+4. 后续按 T07/T08 保存与恢复、T10/T11 导出、T12 展示/GUI 的原依赖推进；A01–A09 仍按体验验证收敛。
+
+这次修改不代表已通知其他聊天、实施者已读或已开始执行新增项。若实施分支使用独立 worktree，交接时同步本次两个方案文档，以及其引用的 docs/research/2026-10-19/gazboard-fit-gap-and-adaptation-assessment.md 和 gazboard-recognizer-probe.json，先核对链接与固定提交，再按同一 T 编号继续；不携带当前其他人的未提交源码，不重放历史任务。
