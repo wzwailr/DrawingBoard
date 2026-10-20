@@ -7,7 +7,7 @@ SHA-256: `87da5287759d85c59caff316ec59a18719a64e4baa900d73c89dbecfce1aabd4`.
 
 `excalidraw/` is ignored vendor material, not a nested Git checkout. The upstream source retains its MIT LICENSE and font licenses. Do not replace its Yarn lock with the application's pnpm lock.
 
-After obtaining the source archive and extracting it to `vendor/excalidraw`, run `pnpm install --frozen-lockfile`, then `pnpm build:editor`. The build script uses pinned Yarn 1.22.22, frozen upstream dependencies and official package build commands. It verifies the upstream lock remains unchanged. A fresh source can also be fetched by the script when the directory does not exist.
+From a fresh checkout, first run `node scripts/build-editor.mjs --fetch-only` with Node 24. This uses only Node builtins to download, verify and extract the pinned source, before the application's link dependencies are installed. Then run `pnpm install --frozen-lockfile --ignore-scripts`, `node node_modules/electron/install.js`, and `pnpm build:editor`. The build script uses pinned Yarn 1.22.22, frozen upstream dependencies and official package build commands. It verifies the upstream lock remains unchanged. `--build-only` reuses already installed upstream dependencies.
 
 No changes to upstream App.tsx or private interaction state are currently made. One controlled source patch is applied by the build script:
 

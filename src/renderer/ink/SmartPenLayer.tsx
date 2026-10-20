@@ -4,11 +4,14 @@ import { recognize } from './recognizer';
 import type { EditorAdapter } from '../editor/adapter';
 import type { Candidate, Point, StrokeSample } from '../../shared/contracts';
 import './ink.css';
+import { flushSync } from 'react-dom';
+import { hitTest } from '../input/hit-policy';
+import type { TextSession } from '../input/TextEditor';
 
 const clock: Clock = { now: () => performance.now(), setTimeout: (fn, ms) => window.setTimeout(fn, ms), clearTimeout: (id) => window.clearTimeout(id as number) };
-type Props = { container: RefObject<HTMLElement | null>; editor: EditorAdapter; enabled: boolean };
+type Props = { container: RefObject<HTMLElement | null>; editor: EditorAdapter; enabled: boolean; mode: 'ink' | 'selection' | 'text'; beginText(session: TextSession): void };
 
-export function SmartPenLayer({ container, editor, enabled }: Props) {
+export function SmartPenLayer({ container, editor, enabled, mode, beginText }: Props) {
   const raw = useRef<SVGPathElement>(null), preview = useRef<SVGPathElement>(null);
   const [hint, setHint] = useState<{ label: string; x: number; y: number } | null>(null);
   useEffect(() => {
@@ -46,36 +49,76 @@ export function SmartPenLayer({ container, editor, enabled }: Props) {
       }
       redraw();
     });
+    let space = false;
+    let textPress: { pointerId: number; x: number; y: number; moved: boolean } | null = null;
+    const hitAt = (event: MouseEvent) => hitTest(editor.api.getSceneElements(), editor.toWorld({ x: event.clientX, y: event.clientY }), editor.api.getAppState().zoom.value, editor.api.getAppState().selectedElementIds);
+    function textAt(event: MouseEvent) {
+      const hit = hitAt(event), elements = editor.api.getSceneElements();
+      const content = hit.kind !== 'blank' && hit.element.type === 'text' ? elements.find((e) => e.id === hit.element.id && e.type === 'text') : undefined;
+      const parentId = content?.type === 'text' ? content.containerId ?? undefined : hit.kind !== 'blank' && ['rectangle', 'ellipse'].includes(hit.element.type) ? hit.element.id : undefined;
+      const label = content?.type === 'text' ? content : elements.find((e) => e.type === 'text' && e.containerId === parentId && parentId !== undefined);
+      const position = label ? { x: label.x, y: label.y } : editor.toWorld({ x: event.clientX, y: event.clientY });
+      beginText({ position, containerId: parentId, textId: label?.id, initial: label?.type === 'text' ? label.text : '' });
+    }
     function down(event: PointerEvent) {
       if (event.button !== 0 || !event.isPrimary || !(event.target instanceof HTMLCanvasElement)) return;
+      if (space) return;
+      if (mode === 'text') { event.preventDefault(); event.stopPropagation(); textAt(event); return; }
+      const hit = hitAt(event);
+      if (hit.kind !== 'blank') {
+        if (hit.element.type === 'text') textPress = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+        flushSync(() => editor.api.setActiveTool({ type: 'selection' }));
+        return;
+      }
+      if (editor.api.getAppState().activeTool.type !== 'custom') flushSync(() => editor.api.setActiveTool({ type: 'custom', customType: 'drawingboard-ink', locked: true }));
       event.preventDefault(); event.stopPropagation(); surface!.focus({ preventScroll: true });
       const state = editor.api.getAppState();
       pen.down(event.pointerId, sample(event), { x: state.scrollX, y: state.scrollY, zoom: state.zoom.value });
       surface!.setPointerCapture(event.pointerId); redraw();
     }
-    function move(event: PointerEvent) { if (pen.isDrawing()) { event.stopPropagation(); pen.move(event.pointerId, sample(event)); redraw(); } }
+    function move(event: PointerEvent) {
+      if (textPress?.pointerId === event.pointerId && Math.hypot(event.clientX-textPress.x,event.clientY-textPress.y) >= 3) textPress.moved = true;
+      if (pen.isDrawing()) { event.stopPropagation(); pen.move(event.pointerId, sample(event)); redraw(); }
+    }
     function up(event: PointerEvent) {
+      if (textPress?.pointerId === event.pointerId) {
+        // Native selection starts its own WYSIWYG on a stationary selected-text
+        // pointer-up. Return to our custom tool before its window listener runs;
+        // keep native cleanup and actual text drags, but only our double-click
+        // may create the product's IME editor.
+        if (!textPress.moved) flushSync(() => editor.api.setActiveTool({ type: 'custom', customType: 'drawingboard-ink', locked: true }));
+        textPress = null;
+      }
       if (!pen.isDrawing()) return;
       event.stopPropagation(); pen.up(event.pointerId, sample(event)); redraw();
       if (surface!.hasPointerCapture(event.pointerId)) surface!.releasePointerCapture(event.pointerId);
     }
     function lost() { if (pen.isDrawing()) { pen.cancel('capture-lost'); redraw(); } }
     function blur() { if (pen.isDrawing()) { pen.cancel('blur'); redraw(); } }
+    function doubleClick(event: MouseEvent) {
+      // Pointer capture retargets the click/double-click to this surface.
+      if (!(event.target instanceof HTMLCanvasElement) && event.target !== surface) return;
+      event.preventDefault(); event.stopPropagation(); textAt(event);
+    }
     function key(event: KeyboardEvent) {
+      if (event.code === 'Space' && !(event.target instanceof HTMLTextAreaElement)) space = true;
       if (!pen.isDrawing() || event.isComposing) return;
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); pen.cancel('escape'); redraw(); }
       else if ((event.ctrlKey || event.metaKey) && /[zy]/i.test(event.key)) { event.preventDefault(); event.stopPropagation(); }
     }
+    function keyUp(event: KeyboardEvent) { if (event.code === 'Space') space = false; }
     surface.addEventListener('pointerdown', down, true); surface.addEventListener('pointermove', move, true); surface.addEventListener('pointerup', up, true);
     surface.addEventListener('lostpointercapture', lost); surface.addEventListener('wheel', blur, true);
-    window.addEventListener('blur', blur); document.addEventListener('keydown', key, true);
+    surface.addEventListener('dblclick', doubleClick, true);
+    window.addEventListener('blur', blur); document.addEventListener('keydown', key, true); document.addEventListener('keyup', keyUp, true);
     return () => {
       surface.removeEventListener('pointerdown', down, true); surface.removeEventListener('pointermove', move, true); surface.removeEventListener('pointerup', up, true);
       surface.removeEventListener('lostpointercapture', lost); surface.removeEventListener('wheel', blur, true);
-      window.removeEventListener('blur', blur); document.removeEventListener('keydown', key, true);
+      surface.removeEventListener('dblclick', doubleClick, true);
+      window.removeEventListener('blur', blur); document.removeEventListener('keydown', key, true); document.removeEventListener('keyup', keyUp, true);
       pen.cancel('hide'); unsubscribe(); pen.dispose(); raw.current?.setAttribute('d', ''); preview.current?.setAttribute('d', '');
     };
-  }, [container, editor, enabled]);
+  }, [container, editor, enabled, mode, beginText]);
   return <><svg className="ink-preview" aria-hidden="true"><path ref={raw} fill="none" stroke="#252b2a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" /><path ref={preview} fill="none" stroke="#4265ae" strokeWidth="2" strokeLinejoin="round" /></svg>
     {hint && <div data-testid="recognition-hint" className="recognition-hint" style={{ left: hint.x, top: hint.y }}>{hint.label}<span>松手确认</span></div>}</>;
 }

@@ -15,7 +15,7 @@ export interface EngineScene {
   files: Record<string, EngineFile>;
   viewBackgroundColor: string;
 }
-export type DesktopEvent = { kind: 'show' | 'request-hide' | 'request-quit' };
+export type DesktopEvent = { kind: 'show' | 'request-hide' | 'request-quit' } | { kind: 'notice'; message: string };
 export interface DesktopApi {
   ready(): void;
   hide(): Promise<void>;

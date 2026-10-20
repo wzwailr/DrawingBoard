@@ -1,0 +1,11 @@
+{
+  "source": "synthetic fixture, not human accuracy evidence",
+  "samples": [
+    { "x": 100, "y": 100, "timeMs": 0 },
+    { "x": 220, "y": 102, "timeMs": 100 },
+    { "x": 222, "y": 180, "timeMs": 200 },
+    { "x": 98, "y": 179, "timeMs": 300 },
+    { "x": 100, "y": 100, "timeMs": 400 }
+  ],
+  "expected": "rectangle, width 124, height 80; release before endpoint hold keeps ink"
+}

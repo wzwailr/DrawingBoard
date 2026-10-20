@@ -1,0 +1,7 @@
+{
+  "source": "GZ08 independent synthetic inputs derived from docs/research/2026-10-19/gazboard-recognizer-probe.json; no GazBoard source copied",
+  "ellipse": { "center": [300, 200], "segments": 128, "sizes": [[200, 200], [300, 200], [400, 200], [600, 200], [12, 12]] },
+  "rectangle": { "vertices": [[100,100], [400,100], [400,260], [100,260]], "samplesPerEdge": 32 },
+  "reverseLine": { "start": [400,300], "step": [-4,-2], "segments": 64 },
+  "diamond": { "vertices": [[300,100], [450,200], [300,300], [150,200]], "samplesPerEdge": 32 }
+}

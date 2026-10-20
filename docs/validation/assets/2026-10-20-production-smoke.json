@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-20T02:25:30.933Z",
+  "mode": "production",
+  "probe": "undefined",
+  "require": "undefined",
+  "offline": true,
+  "remote": [],
+  "errors": [],
+  "objectCount": 5,
+  "mainSha256": "ef9d60820578545cec044de0a3bd1a098b39302d14c72f25c4956e221672c30e",
+  "indexSha256": "945af4b8c62f096b4ddde27629355e55745d41cab19106080b36e87c19d22b02"
+}

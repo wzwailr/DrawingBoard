@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { recognize } from '../../src/renderer/ink/recognizer';
 import { createStrokeElement } from '../../src/renderer/editor/stroke-element';
 import type { StrokeSample } from '../../src/shared/contracts';
+import { readFileSync } from 'node:fs';
 const samples = (pairs: number[][]): StrokeSample[] => pairs.map(([x, y], i) => ({ x, y, timeMs: i * 10 }));
 
 describe('real pinned engine classification and stroke conversion', () => {
-  const rectangle = samples([[100,100],[220,102],[222,180],[98,179],[100,100]]);
+  const rectangle: StrokeSample[] = JSON.parse(readFileSync('tests/fixtures/strokes/rough-rectangle.json', 'utf8')).samples;
   it('recognizes a rough rectangle at its original position and proportions', () => {
     const candidate = recognize(rectangle);
     expect(candidate).toMatchObject({ kind: 'rectangle', center: { x: 160, y: 140 }, width: 124, height: 80 });

@@ -2,6 +2,7 @@ import { convertToExcalidrawElements, CaptureUpdateAction } from '@excalidraw/ex
 import type { EditorAdapter } from '../../src/renderer/editor/adapter';
 import type { EngineScene } from '../../src/shared/contracts';
 import type { FileId } from '@excalidraw/excalidraw/element/types';
+import { seedPerformance } from './performance-scene';
 
 export interface P0Probe {
   snapshot(): EngineScene;
@@ -9,6 +10,11 @@ export interface P0Probe {
   clear(): void;
   viewport(): { zoom: number; scrollX: number; scrollY: number };
   seedBasics(): void;
+  seedPerformance(mixed?: boolean): number;
+  pan(x: number): void;
+  setZoom(zoom: number, scrollX?: number, scrollY?: number): void;
+  toScreen(point: { x: number; y: number }): { x: number; y: number };
+  waitForInkCommit(): Promise<{ at: number; count: number }>;
 }
 
 export function attachProbe(adapter: EditorAdapter) {
@@ -17,6 +23,18 @@ export function attachProbe(adapter: EditorAdapter) {
     load: (scene: EngineScene) => adapter.load(scene),
     clear() { adapter.api.updateScene({ elements: [], captureUpdate: CaptureUpdateAction.IMMEDIATELY }); },
     viewport: () => ({ zoom: adapter.api.getAppState().zoom.value, scrollX: adapter.api.getAppState().scrollX, scrollY: adapter.api.getAppState().scrollY }),
+    seedPerformance: (mixed = false) => seedPerformance(adapter, mixed),
+    pan: (x: number) => adapter.api.updateScene({ appState: { scrollX: x } }),
+    setZoom: (zoom: number, scrollX = 0, scrollY = 0) => adapter.api.updateScene({ appState: { scrollX, scrollY, zoom: { value: zoom as ReturnType<typeof adapter.api.getAppState>['zoom']['value'] } } }),
+    toScreen: (point: { x: number; y: number }) => adapter.toScreen(point),
+    waitForInkCommit: () => new Promise<{ at: number; count: number }>((resolve, reject) => {
+      const before = new Set(adapter.api.getSceneElements().map((e) => e.id));
+      const timer = window.setTimeout(() => { unsubscribe(); reject(new Error('No input commit within 3s')); }, 3000);
+      const unsubscribe = adapter.api.onChange((elements) => {
+        if (!elements.some((e) => !e.isDeleted && e.type === 'freedraw' && !before.has(e.id))) return;
+        window.clearTimeout(timer); unsubscribe(); resolve({ at: performance.timeOrigin + performance.now(), count: elements.filter((e) => !e.isDeleted).length });
+      });
+    }),
     seedBasics() {
       const canvas = document.createElement('canvas'); canvas.width = 120; canvas.height = 80;
       const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#e3eee8'; ctx.fillRect(0, 0, 120, 80);

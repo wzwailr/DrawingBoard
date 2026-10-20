@@ -28,6 +28,8 @@ if (!existsSync(path.join(source, 'package.json'))) {
 }
 const packageJson = JSON.parse(await readFile(path.join(source, 'package.json'), 'utf8'));
 if (packageJson.packageManager !== 'yarn@1.22.22') throw new Error('Unexpected upstream package manager');
+// Root link dependencies need the source tree before pnpm can install Yarn.
+if (process.argv.includes('--fetch-only')) { console.log(`Pinned source ready at ${source}; no package manager invoked`); process.exit(0); }
 const lockBefore = await hash(path.join(source, 'yarn.lock'));
 const fontPatch = JSON.parse(await readFile('vendor/patches/local-fonts.json', 'utf8'));
 const fontSource = path.join(source, fontPatch.file);
