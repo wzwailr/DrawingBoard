@@ -1,0 +1,86 @@
+{
+  "recordedAt": "2026-10-20T02:34:34.965Z",
+  "scope": "P0 T01-T03 only; no P1",
+  "reviewRange": "c55c43d..f80bd779dd9cce41a4c4982336ccd21cd7f4ec33",
+  "review": {
+    "critical": 0,
+    "important": 1,
+    "minor": 0,
+    "importantDisposition": "fixed, RED->GREEN, then whole suite"
+  },
+  "checks": [
+    {
+      "command": "pnpm typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm build -- --validation",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm exec playwright test --config playwright.desktop.config.ts",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/benchmark.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm build",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/check-production.mjs",
+      "exitCode": 0
+    }
+  ],
+  "unit": {
+    "files": 6,
+    "passed": 33,
+    "failed": 0
+  },
+  "desktop": {
+    "passed": 21,
+    "failed": 0,
+    "workers": 1
+  },
+  "sourceHashes": {
+    "src/renderer/ink/SmartPenLayer.tsx": "4c0b7da677701678924e47c0bab94b7da4b0660caf1c10dd8d719cbee176ef51",
+    "tests/desktop/core-interaction.spec.ts": "42401ad9f90b20c608e683a42c673f54422a90e666a4bc45a691004bce647904",
+    "scripts/benchmark.mjs": "13722d7f741a4af2a977f177e28518ff8b0a24c51f775f2e5c80110f63a6a8e6",
+    "scripts/check-production.mjs": "4682f33b9baf8bb2d4a63f93ae14188115457107f0568f2931d521114e4d842e",
+    "pnpm-lock.yaml": "1abc10daa3a10397a6d72a3dcd0a9b8c3dcb857fc918fd2d739dec46e9027552"
+  },
+  "validationBuild": {
+    "mode": "validation",
+    "mainSha256": "ef9d60820578545cec044de0a3bd1a098b39302d14c72f25c4956e221672c30e",
+    "indexSha256": "64c633f16ee60fad17f7f80927e57b40f6d256b376fd3ad32a36310970c913e2"
+  },
+  "productionBuild": {
+    "at": "2026-10-20T02:33:46.632Z",
+    "mode": "production",
+    "probe": "undefined",
+    "require": "undefined",
+    "offline": true,
+    "remote": [],
+    "errors": [],
+    "objectCount": 5,
+    "mainSha256": "ef9d60820578545cec044de0a3bd1a098b39302d14c72f25c4956e221672c30e",
+    "indexSha256": "a87338d760946b06ec5754fdf739a5c18d1b222eee983eb9704f1ad5b169f4f2"
+  },
+  "performanceP95": {
+    "warmMs": 60.083740234375,
+    "restartMs": 1675.5915999999997,
+    "frameMs": 17
+  },
+  "limits": [
+    "No user feel approval for A01/A02/A07",
+    "No persistence, installer or reboot-cold measurement",
+    "Physical IME/hotkey evidence was recorded separately before the final Space fix",
+    "One independent review of fixed range; final tree verified by executor"
+  ]
+}

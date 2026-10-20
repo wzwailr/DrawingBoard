@@ -2,7 +2,7 @@
 
 一个面向 Windows、以鼠标和键盘为主的快速画板：随时唤出，在自由画布上绘制草图、整理结构与关系、组合页面布局。
 
-当前已有 **P0 核心交互验证原型**。本轮正在收口验证与独立审查，范围停留在 P0，尚未进入 P1，也没有发布安装包。`DrawingBoard` 为项目代号，正式产品名称尚未确定。
+当前已有 **P0 核心交互验证原型，技术门槛已通过（2026-10-20）**：33 项逻辑/集成测试、21 项桌面测试及生产构建离线操作冒烟通过；独立审查发现的 1 项重要问题已修复并回归。范围停留在 P0，尚未进入 P1，也没有发布安装包或获得用户手感认可。`DrawingBoard` 为项目代号，正式产品名称尚未确定。
 
 原型支持智能笔（直接松手保留原迹、停顿预览后松手规整）、框内绘制/边框移动、中文文字、绑定直线、PNG/PDF 导出，以及托盘和 `Ctrl+Alt+D` 收起/唤出。
 
@@ -40,6 +40,7 @@ pnpm exec electron .
 
 - [P0 证据、测试口径与限制](docs/validation/p0-evidence.md)
 - [ADR-001：编辑器和桌面外壳决策](docs/engineering/adr-001-editor-and-shell.md)
+- [独立审查与修复记录](docs/validation/p0-review-2026-10-20.md)
 
 ```powershell
 pnpm typecheck
@@ -47,6 +48,8 @@ pnpm test
 pnpm build -- --validation
 pnpm exec playwright test --config playwright.desktop.config.ts
 node scripts/benchmark.mjs
+pnpm build
+node scripts/check-production.mjs
 ```
 
 桌面测试、基准与试用窗口需串行运行，避免全局快捷键和焦点互相干扰。验证构建才包含测试探针；生产构建不加载 fixtures。可用 `node scripts/preview.mjs` 在验证构建中打开合成示例；P0 基准不代表 P1 保存恢复或安装后性能。
