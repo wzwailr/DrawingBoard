@@ -94,7 +94,12 @@ export function SmartPenLayer({ container, editor, enabled, mode, beginText }: P
       if (surface!.hasPointerCapture(event.pointerId)) surface!.releasePointerCapture(event.pointerId);
     }
     function lost() { if (pen.isDrawing()) { pen.cancel('capture-lost'); redraw(); } }
-    function blur() { if (pen.isDrawing()) { pen.cancel('blur'); redraw(); } }
+    function interrupt(event: Event) {
+      // A key released in another application never reaches this document.
+      // Wheel navigation cancels ink too, but must retain a still-held Space.
+      if (event.type === 'blur') { space = false; textPress = null; }
+      if (pen.isDrawing()) { pen.cancel('blur'); redraw(); }
+    }
     function doubleClick(event: MouseEvent) {
       // Pointer capture retargets the click/double-click to this surface.
       if (!(event.target instanceof HTMLCanvasElement) && event.target !== surface) return;
@@ -108,14 +113,14 @@ export function SmartPenLayer({ container, editor, enabled, mode, beginText }: P
     }
     function keyUp(event: KeyboardEvent) { if (event.code === 'Space') space = false; }
     surface.addEventListener('pointerdown', down, true); surface.addEventListener('pointermove', move, true); surface.addEventListener('pointerup', up, true);
-    surface.addEventListener('lostpointercapture', lost); surface.addEventListener('wheel', blur, true);
+    surface.addEventListener('lostpointercapture', lost); surface.addEventListener('wheel', interrupt, true);
     surface.addEventListener('dblclick', doubleClick, true);
-    window.addEventListener('blur', blur); document.addEventListener('keydown', key, true); document.addEventListener('keyup', keyUp, true);
+    window.addEventListener('blur', interrupt); document.addEventListener('keydown', key, true); document.addEventListener('keyup', keyUp, true);
     return () => {
       surface.removeEventListener('pointerdown', down, true); surface.removeEventListener('pointermove', move, true); surface.removeEventListener('pointerup', up, true);
-      surface.removeEventListener('lostpointercapture', lost); surface.removeEventListener('wheel', blur, true);
+      surface.removeEventListener('lostpointercapture', lost); surface.removeEventListener('wheel', interrupt, true);
       surface.removeEventListener('dblclick', doubleClick, true);
-      window.removeEventListener('blur', blur); document.removeEventListener('keydown', key, true); document.removeEventListener('keyup', keyUp, true);
+      window.removeEventListener('blur', interrupt); document.removeEventListener('keydown', key, true); document.removeEventListener('keyup', keyUp, true);
       pen.cancel('hide'); unsubscribe(); pen.dispose(); raw.current?.setAttribute('d', ''); preview.current?.setAttribute('d', '');
     };
   }, [container, editor, enabled, mode, beginText]);

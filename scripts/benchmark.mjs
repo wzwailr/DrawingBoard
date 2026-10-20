@@ -21,7 +21,16 @@ async function inputSample(app) {
     const waiting = w.webContents.executeJavaScript('window.__p0.waitForInkCommit()');
     // The subscription is installed in the renderer before input is sent.
     await w.webContents.executeJavaScript('true');
-    const begin = performance.timeOrigin + performance.now(); w.show();
+    const begin = performance.timeOrigin + performance.now(); w.show(); w.focus();
+    // Showing a native window is asynchronous. An unpaced batch sent in the
+    // same turn can lose pointer capture during Windows activation. Keep that
+    // readiness wait inside the measured show-to-commit interval.
+    if (!w.isFocused()) await new Promise((resolve, reject) => {
+      const onFocus = () => { clearTimeout(timer); resolve(); };
+      const timer = setTimeout(() => { w.removeListener('focus', onFocus); reject(new Error('Window did not gain focus')); }, 2000);
+      w.once('focus', onFocus);
+    });
+    await w.webContents.executeJavaScript('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
     w.webContents.sendInputEvent({ type: 'mouseMove', x: 1050, y: 680 });
     w.webContents.sendInputEvent({ type: 'mouseDown', x: 1050, y: 680, button: 'left', clickCount: 1 });
     w.webContents.sendInputEvent({ type: 'mouseMove', x: 1080, y: 690, button: 'left' });
@@ -75,7 +84,7 @@ try {
   const idleMixed = await idleSample(current.app);
   const p95 = (values) => [...values].sort((a,b)=>a-b)[Math.ceil(values.length*.95)-1];
   const result = { measuredAt: new Date().toISOString(), build: {mode:'validation', mainSha256:createHash('sha256').update(await readFile('dist-electron/main.cjs')).digest('hex'), indexSha256:createHash('sha256').update(await readFile('dist/index.html')).digest('hex')}, device: { platform: os.platform(), release: os.release(), arch: os.arch(), cpu: os.cpus()[0].model, logicalCpu: os.cpus().length, ramGiB: os.totalmem()/1024**3, scaleFactor: display.scaleFactor },
-    definitions: { S: '100 shapes/text + 20 arrows + 3 images; image bytes below', warm: 'main show request through Chromium mouse events to a new original-ink object committed in the actual editor; excludes physical key dispatch latency', restart: 'external _electron.launch start, CDP attach, locally read reference scene, image decoding, two frames and actual ink commit; caches warm, not reboot cold start; fixture injection is benchmark-only, not P1 persistence', frames: '1000 mixed objects, 180 scripted pan updates, first 5 discarded; RAF frame interval, not GPU draw time', idle: '3 second app.getAppMetrics sample; percentCPUUsage since previous call, all app processes summed' },
+    definitions: { S: '100 shapes/text + 20 arrows + 3 images; image bytes below', warm: 'main show/focus request, native focus and two animation frames, through Chromium mouse events to a new original-ink object committed in the actual editor; includes readiness wait, excludes physical key dispatch latency', restart: 'external _electron.launch start, CDP attach, locally read reference scene, image decoding, two frames and actual ink commit; caches warm, not reboot cold start; fixture injection is benchmark-only, not P1 persistence', frames: '1000 mixed objects, 180 scripted pan updates, first 5 discarded; RAF frame interval, not GPU draw time', idle: '3 second app.getAppMetrics sample; percentCPUUsage since previous call, all app processes summed' },
     scene: { count: scene.elements.length, imageBytes }, warmMs: warm, restartMs: restart, frameMs: frames,
     p95: { warmMs: p95(warm), restartMs: p95(restart), frameMs: p95(frames) },
     idleReference, idleMixed };

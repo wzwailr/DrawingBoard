@@ -66,6 +66,33 @@ test('selected native corner handle resizes instead of drawing ink', async () =>
   expect(Number(scene.elements.find((e) => e.id === 'node-a')?.width)).toBeGreaterThan(220);
   expect(scene.elements.filter((e) => e.type === 'freedraw')).toHaveLength(0);
 });
+test('smart pen resumes after Space is released outside the blurred window', async () => {
+  await page.evaluate(() => window.__p0!.clear());
+  await page.keyboard.down('Space');
+  // Model release in a different application: reset the driver key state but
+  // deliberately do not deliver that keyup to either application handler.
+  await page.evaluate(() => window.addEventListener('keyup', (event) => event.stopImmediatePropagation(), { capture: true, once: true }));
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].hide());
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible())).toBe(false);
+  // CDP can emulate document focus while the native window is hidden. Explicit
+  // blur exercises the product handler deterministically; this is not an IME/
+  // physical-key acceptance claim.
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.keyboard.up('Space');
+  await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.show(); window.focus(); });
+  await page.waitForFunction(() => document.hasFocus());
+  await page.mouse.move(850,450); await page.mouse.down(); await page.mouse.move(900,470,{steps:8}); await page.mouse.up();
+  await expect.poll(async () => (await page.evaluate(() => window.__p0!.snapshot())).elements.map((e)=>e.type)).toEqual(['freedraw']);
+});
+test('wheel navigation preserves a still-held Space until keyup', async () => {
+  await page.evaluate(() => window.__p0!.clear());
+  await page.keyboard.down('Space'); await page.mouse.move(850,450); await page.mouse.wheel(0,50);
+  await page.mouse.down(); await page.mouse.move(900,470,{steps:8}); await page.mouse.up();
+  expect((await page.evaluate(() => window.__p0!.snapshot())).elements).toHaveLength(0);
+  await page.keyboard.up('Space');
+  await page.mouse.move(850,450); await page.mouse.down(); await page.mouse.move(900,470,{steps:8}); await page.mouse.up();
+  await expect.poll(async () => (await page.evaluate(() => window.__p0!.snapshot())).elements.map((e)=>e.type)).toEqual(['freedraw']);
+});
 test('inside_draws_border_moves and bound line follows the actual native drag', async () => {
   const original = await page.evaluate(() => window.__p0!.snapshot());
   // World node-a begins at (160,180), canvas is 54 CSS pixels below the viewport top.
